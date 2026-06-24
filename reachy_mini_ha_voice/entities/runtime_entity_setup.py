@@ -1,0 +1,218 @@
+"""Entity setup helpers for runtime/control related entities."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+from .entity import NumberEntity, TextSensorEntity
+from .entity_extensions import SelectEntity, SwitchEntity
+from .entity_keys import get_entity_key
+
+if TYPE_CHECKING:
+    from .entity_registry import EntityRegistry
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def setup_runtime_entities(registry: "EntityRegistry", entities: list) -> None:
+    rc = registry.reachy_controller
+
+    def get_wake_word_1_sensitivity() -> float:
+        return float(registry._get_server_state().wake_word_1_threshold)
+
+    def set_wake_word_1_sensitivity(value: float) -> None:
+        state = registry._get_server_state()
+        state.wake_word_1_threshold = float(value)
+        state.preferences.wake_word_1_sensitivity = float(value)
+        state.save_preferences()
+
+    def get_wake_word_2_sensitivity() -> float:
+        return float(registry._get_server_state().wake_word_2_threshold)
+
+    def set_wake_word_2_sensitivity(value: float) -> None:
+        state = registry._get_server_state()
+        state.wake_word_2_threshold = float(value)
+        state.preferences.wake_word_2_sensitivity = float(value)
+        state.save_preferences()
+
+    def get_stop_word_sensitivity() -> float:
+        return float(registry._get_server_state().stop_word_threshold)
+
+    def set_stop_word_sensitivity(value: float) -> None:
+        state = registry._get_server_state()
+        state.stop_word_threshold = float(value)
+        state.preferences.stop_word_sensitivity = float(value)
+        state.save_preferences()
+
+    entities.append(
+        TextSensorEntity(
+            server=registry.server,
+            key=get_entity_key("daemon_state"),
+            name="Daemon State",
+            object_id="daemon_state",
+            icon="mdi:robot",
+            value_getter=rc.get_daemon_state,
+        )
+    )
+    entities.append(
+        BinarySensorEntity(
+            server=registry.server,
+            key=get_entity_key("backend_ready"),
+            name="Backend Ready",
+            object_id="backend_ready",
+            icon="mdi:check-circle",
+            device_class="connectivity",
+            value_getter=rc.get_backend_ready,
+        )
+    )
+    entities.append(
+        NumberEntity(
+            server=registry.server,
+            key=get_entity_key("speaker_volume"),
+            name="Speaker Volume",
+            object_id="speaker_volume",
+            min_value=0.0,
+            max_value=100.0,
+            step=1.0,
+            icon="mdi:volume-high",
+            unit_of_measurement="%",
+            mode=2,
+            entity_category=1,
+            value_getter=rc.get_speaker_volume,
+            value_setter=rc.set_speaker_volume,
+        )
+    )
+    entities.append(
+        NumberEntity(
+            server=registry.server,
+            key=get_entity_key("wake_word_1_sensitivity"),
+            name="Wake Word 1 Sensitivity",
+            object_id="wake_word_1_sensitivity",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.001,
+            icon="mdi:microphone-question",
+            mode=1,
+            entity_category=1,
+            value_getter=get_wake_word_1_sensitivity,
+            value_setter=set_wake_word_1_sensitivity,
+        )
+    )
+    entities.append(
+        NumberEntity(
+            server=registry.server,
+            key=get_entity_key("wake_word_2_sensitivity"),
+            name="Wake Word 2 Sensitivity",
+            object_id="wake_word_2_sensitivity",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.001,
+            icon="mdi:microphone-question",
+            mode=1,
+            entity_category=1,
+            value_getter=get_wake_word_2_sensitivity,
+            value_setter=set_wake_word_2_sensitivity,
+        )
+    )
+    entities.append(
+        NumberEntity(
+            server=registry.server,
+            key=get_entity_key("stop_word_sensitivity"),
+            name="Stop Word Sensitivity",
+            object_id="stop_word_sensitivity",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.001,
+            icon="mdi:microphone-off",
+            mode=1,
+            entity_category=1,
+            value_getter=get_stop_word_sensitivity,
+            value_setter=set_stop_word_sensitivity,
+        )
+    )
+
+    def get_muted() -> bool:
+        state = registry._get_server_state()
+        return bool(state.is_muted)
+
+    def set_muted(muted: bool) -> None:
+        state = registry._get_server_state()
+        state.is_muted = muted
+        voice_assistant = registry.server._voice_assistant_service
+        if muted:
+            voice_assistant._suspend_voice_services(reason="mute")
+        else:
+            voice_assistant._resume_voice_services(reason="mute")
+
+    entities.append(
+        SwitchEntity(
+            server=registry.server,
+            key=get_entity_key("mute"),
+            name="Mute",
+            object_id="mute",
+            icon="mdi:microphone-off",
+            entity_category=1,
+            value_getter=get_muted,
+            value_setter=set_muted,
+        )
+    )
+
+    entities.append(
+        registry._make_preference_switch(
+            key_name="idle_behavior_enabled",
+            name="Idle Behavior",
+            object_id="idle_behavior_enabled",
+            icon="mdi:motion-play",
+            getter=lambda: bool(registry._get_preferences().idle_behavior_enabled)
+            if registry._get_preferences()
+            else False,
+            setter=registry._set_idle_behavior_enabled,
+        )
+    )
+
+    _LOGGER.debug("Phase 1 entities registered")
+
+
+def setup_service_entities(registry: "EntityRegistry", entities: list) -> None:
+    _LOGGER.debug("Service state entity is internal-only")
+
+
+def setup_behavior_entities(registry: "EntityRegistry", entities: list) -> None:
+    def get_emotion() -> str:
+        return registry._current_emotion
+
+    def set_emotion(emotion: str) -> None:
+        registry._current_emotion = emotion
+        emotion_name = registry._emotion_map.get(emotion)
+        if emotion_name and registry._play_emotion_callback:
+            registry._play_emotion_callback(emotion_name)
+            registry._current_emotion = "None"
+
+    entities.append(
+        SelectEntity(
+            server=registry.server,
+            key=get_entity_key("emotion"),
+            name="Emotion",
+            object_id="emotion",
+            options=list(registry._emotion_map.keys()),
+            icon="mdi:emoticon",
+            value_getter=get_emotion,
+            value_setter=set_emotion,
+        )
+    )
+
+    entities.append(
+        SwitchEntity(
+            server=registry.server,
+            key=get_entity_key("continuous_conversation"),
+            name="Continuous Conversation",
+            object_id="continuous_conversation",
+            icon="mdi:message-reply-text",
+            device_class="switch",
+            entity_category=1,
+            value_getter=lambda: registry._get_pref_bool("continuous_conversation"),
+            value_setter=lambda enabled: registry._set_pref_bool("continuous_conversation", enabled),
+        )
+    )
+    _LOGGER.debug("Behavior entities registered")

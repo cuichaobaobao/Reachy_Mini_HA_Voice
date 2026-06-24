@@ -1,0 +1,356 @@
+"""Entity factory for creating ESPHome entities.
+
+This module provides factory functions for creating entities in a declarative way,
+reducing boilerplate code in entity_registry.py.
+"""
+
+import logging
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+from .entity import BinarySensorEntity, NumberEntity, TextSensorEntity
+from .entity_extensions import ButtonEntity, SelectEntity, SensorEntity, SwitchEntity
+from .entity_keys import get_entity_key
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class EntityType(Enum):
+    """Supported entity types."""
+
+    SENSOR = "sensor"
+    BINARY_SENSOR = "binary_sensor"
+    TEXT_SENSOR = "text_sensor"
+    SWITCH = "switch"
+    SELECT = "select"
+    BUTTON = "button"
+    NUMBER = "number"
+
+
+@dataclass
+class EntityDefinition:
+    """Definition for an entity to be created."""
+
+    entity_type: EntityType
+    key_name: str
+    name: str
+    object_id: str
+    icon: str = "mdi:information"
+
+    # Common optional fields
+    entity_category: int | None = None  # 0=None, 1=config, 2=diagnostic
+
+    # Sensor specific
+    unit_of_measurement: str | None = None
+    accuracy_decimals: int | None = None
+    state_class: str | None = None
+    device_class: str | None = None
+
+    # Number specific
+    min_value: float | None = None
+    max_value: float | None = None
+    step: float | None = None
+    mode: int | None = None  # 0=auto, 1=box, 2=slider
+
+    # Select specific
+    options: list[str] | None = None
+
+    # Callbacks (set at runtime)
+    value_getter: Callable | None = None
+    command_handler: Callable | None = None
+
+    # Additional kwargs
+    extra: dict[str, Any] = field(default_factory=dict)
+
+
+def create_entity(server, definition: EntityDefinition) -> Any:
+    """Create an entity from a definition.
+
+    Args:
+        server: The VoiceSatelliteProtocol server instance
+        definition: The entity definition
+
+    Returns:
+        The created entity instance
+    """
+    key = get_entity_key(definition.key_name)
+
+    common_args = {
+        "server": server,
+        "key": key,
+        "name": definition.name,
+        "object_id": definition.object_id,
+        "icon": definition.icon,
+    }
+
+    if definition.entity_category is not None:
+        common_args["entity_category"] = definition.entity_category
+
+    if definition.entity_type == EntityType.SENSOR:
+        args = {**common_args}
+        if definition.unit_of_measurement:
+            args["unit_of_measurement"] = definition.unit_of_measurement
+        if definition.accuracy_decimals is not None:
+            args["accuracy_decimals"] = definition.accuracy_decimals
+        if definition.state_class:
+            args["state_class"] = definition.state_class
+        if definition.device_class:
+            args["device_class"] = definition.device_class
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        args.update(definition.extra)
+        return SensorEntity(**args)
+
+    elif definition.entity_type == EntityType.BINARY_SENSOR:
+        args = {**common_args}
+        if definition.device_class:
+            args["device_class"] = definition.device_class
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        args.update(definition.extra)
+        return BinarySensorEntity(**args)
+
+    elif definition.entity_type == EntityType.TEXT_SENSOR:
+        args = {**common_args}
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        args.update(definition.extra)
+        return TextSensorEntity(**args)
+
+    elif definition.entity_type == EntityType.SWITCH:
+        args = {**common_args}
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        if definition.command_handler:
+            args["command_handler"] = definition.command_handler
+        args.update(definition.extra)
+        return SwitchEntity(**args)
+
+    elif definition.entity_type == EntityType.SELECT:
+        args = {**common_args}
+        if definition.options:
+            args["options"] = definition.options
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        if definition.command_handler:
+            args["command_handler"] = definition.command_handler
+        args.update(definition.extra)
+        return SelectEntity(**args)
+
+    elif definition.entity_type == EntityType.BUTTON:
+        args = {**common_args}
+        if definition.command_handler:
+            args["command_handler"] = definition.command_handler
+        args.update(definition.extra)
+        return ButtonEntity(**args)
+
+    elif definition.entity_type == EntityType.NUMBER:
+        args = {**common_args}
+        if definition.min_value is not None:
+            args["min_value"] = definition.min_value
+        if definition.max_value is not None:
+            args["max_value"] = definition.max_value
+        if definition.step is not None:
+            args["step"] = definition.step
+        if definition.mode is not None:
+            args["mode"] = definition.mode
+        if definition.unit_of_measurement:
+            args["unit_of_measurement"] = definition.unit_of_measurement
+        if definition.value_getter:
+            args["value_getter"] = definition.value_getter
+        if definition.command_handler:
+            # NumberEntity uses value_setter instead of command_handler
+            args["value_setter"] = definition.command_handler
+        args.update(definition.extra)
+        return NumberEntity(**args)
+
+    else:
+        raise ValueError(f"Unknown entity type: {definition.entity_type}")
+
+
+def create_entities(server, definitions: list[EntityDefinition]) -> list[Any]:
+    """Create multiple entities from definitions.
+
+    Args:
+        server: The VoiceSatelliteProtocol server instance
+        definitions: List of entity definitions
+
+    Returns:
+        List of created entity instances
+    """
+    entities = []
+    for definition in definitions:
+        try:
+            entity = create_entity(server, definition)
+            entities.append(entity)
+        except Exception as e:
+            _LOGGER.error("Failed to create entity %s: %s", definition.key_name, e)
+    return entities
+
+
+# ============================================================================
+# Predefined entity definition groups
+# ============================================================================
+
+
+def get_imu_sensor_definitions() -> list[EntityDefinition]:
+    """Get definitions for IMU sensor entities."""
+    return [
+        EntityDefinition(
+            entity_type=EntityType.SENSOR,
+            key_name="imu_temperature",
+            name="IMU Temperature",
+            object_id="imu_temperature",
+            icon="mdi:thermometer",
+            unit_of_measurement="°C",
+            accuracy_decimals=1,
+            device_class="temperature",
+            state_class="measurement",
+            entity_category=2,
+        )
+    ]
+
+def get_robot_info_definitions() -> list[EntityDefinition]:
+    """Get definitions for robot info entities."""
+    return [
+        EntityDefinition(
+            entity_type=EntityType.SENSOR,
+            key_name="control_loop_frequency",
+            name="Control Loop Frequency",
+            object_id="control_loop_frequency",
+            icon="mdi:speedometer",
+            unit_of_measurement="Hz",
+            accuracy_decimals=1,
+            state_class="measurement",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.TEXT_SENSOR,
+            key_name="sdk_version",
+            name="SDK Version",
+            object_id="sdk_version",
+            icon="mdi:information",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.TEXT_SENSOR,
+            key_name="robot_name",
+            name="Robot Name",
+            object_id="robot_name",
+            icon="mdi:robot",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.BINARY_SENSOR,
+            key_name="wireless_version",
+            name="Wireless Version",
+            object_id="wireless_version",
+            icon="mdi:wifi",
+            device_class="connectivity",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.BINARY_SENSOR,
+            key_name="simulation_mode",
+            name="Simulation Mode",
+            object_id="simulation_mode",
+            icon="mdi:virtual-reality",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.TEXT_SENSOR,
+            key_name="wlan_ip",
+            name="WLAN IP",
+            object_id="wlan_ip",
+            icon="mdi:ip-network",
+            entity_category=2,
+        ),
+        EntityDefinition(
+            entity_type=EntityType.TEXT_SENSOR,
+            key_name="error_message",
+            name="Error Message",
+            object_id="error_message",
+            icon="mdi:alert-circle",
+            entity_category=2,
+        ),
+    ]
+
+
+def get_pose_control_definitions() -> list[EntityDefinition]:
+    """Get definitions for pose control entities (Phase 3)."""
+    definitions = []
+
+    # HA-facing manual pose controls. Internal motion can still use full
+    # x/y/z pose composition; these are only the safe daily controls.
+    for orient in ["roll", "pitch"]:
+        definitions.append(
+            EntityDefinition(
+                entity_type=EntityType.NUMBER,
+                key_name=f"head_{orient}",
+                name=f"Head {orient.capitalize()}",
+                object_id=f"head_{orient}",
+                icon="mdi:rotate-3d-variant",
+                min_value=-40.0,
+                max_value=40.0,
+                step=1.0,
+                unit_of_measurement="°",
+                mode=2,
+                entity_category=1,
+            )
+        )
+
+    # Head yaw (wider range)
+    definitions.append(
+        EntityDefinition(
+            entity_type=EntityType.NUMBER,
+            key_name="head_yaw",
+            name="Head Yaw",
+            object_id="head_yaw",
+            icon="mdi:rotate-3d-variant",
+            min_value=-180.0,
+            max_value=180.0,
+            step=1.0,
+        unit_of_measurement="°",
+        mode=2,
+        entity_category=1,
+    )
+    )
+
+    # Body yaw control
+    definitions.append(
+        EntityDefinition(
+            entity_type=EntityType.NUMBER,
+            key_name="body_yaw",
+            name="Body Yaw",
+            object_id="body_yaw",
+            icon="mdi:rotate-3d-variant",
+            min_value=-160.0,
+            max_value=160.0,
+            step=1.0,
+        unit_of_measurement="°",
+        mode=2,
+        entity_category=1,
+    )
+    )
+
+    # Antenna controls
+    for side, label in [("left", "L"), ("right", "R")]:
+        definitions.append(
+            EntityDefinition(
+                entity_type=EntityType.NUMBER,
+                key_name=f"antenna_{side}",
+                name=f"Antenna({label})",
+                object_id=f"antenna_{side}",
+                icon="mdi:antenna",
+                min_value=-180.0,
+                max_value=180.0,
+                step=1.0,
+                unit_of_measurement="°",
+                mode=2,
+                entity_category=1,
+            )
+        )
+
+    return definitions
