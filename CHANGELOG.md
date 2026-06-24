@@ -2,6 +2,16 @@
 
 All notable changes to Reachy Mini HA Voice are documented here.
 
+## [1.1.1] - 2026-06-24
+
+### Changed
+- Align bundled MicroWakeWord assets with `OHF-Voice/linux-voice-assistant` `main`:
+  Okay Nabu, Hey Mycroft, Hey Jarvis, and Stop now use the matching upstream
+  `.tflite` models and `.json` configs.
+- Store bundled wake-word models and short notification sounds as regular Git
+  files instead of Git LFS pointers so GitHub Actions and Hugging Face sync can
+  install the app without missing LFS objects.
+
 ## [1.1.0] - 2026-06-24
 
 ### Added

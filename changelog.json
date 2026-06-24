@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-06-24",
+    "changes": [
+      "Align bundled MicroWakeWord assets with OHF-Voice/linux-voice-assistant main for Okay Nabu, Hey Mycroft, Hey Jarvis, and Stop",
+      "Store wake-word models and short notification sounds as regular Git files instead of Git LFS pointers so GitHub Actions and Hugging Face sync can install reliably"
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-06-24",
     "changes": [
