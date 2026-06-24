@@ -1,5 +1,3 @@
-# LFS tracking for large binary files
-*.tflite filter=lfs diff=lfs merge=lfs -text
-*.onnx filter=lfs diff=lfs merge=lfs -text
-*.pt filter=lfs diff=lfs merge=lfs -text
-*.flac filter=lfs diff=lfs merge=lfs -text
+# Keep bundled wake-word models and short notification sounds as regular Git
+# blobs. They are small enough for GitHub and must be available during Actions
+# checkout before the Hugging Face sync workflow runs.
