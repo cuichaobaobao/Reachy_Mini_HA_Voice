@@ -2,6 +2,13 @@
 
 All notable changes to Reachy Mini HA Voice are documented here.
 
+## [1.1.2] - 2026-06-25
+
+### Changed
+- Remove personal namespace from ESPHome device metadata and user-facing docs.
+- Simplify README and setup notes around Home Assistant discovery.
+- Keep Linux Voice wake-word assets and official-style 60Hz motion alignment unchanged.
+
 ## [1.1.1] - 2026-06-24
 
 ### Changed
@@ -22,10 +29,10 @@ All notable changes to Reachy Mini HA Voice are documented here.
 - Keep Home Assistant voice pipeline integration for STT, conversation, TTS, media-player volume, mute, continuous conversation, and wake/stop sensitivity controls.
 
 ### Changed
-- Rebrand Home Assistant device metadata to `Reachy Mini HA Voice` by `lichao622`.
+- Use neutral Home Assistant device metadata for `Reachy Mini HA Voice`.
 - Trim the Home Assistant entity surface to the controls and diagnostics that are useful day to day.
 - Keep internal robot capabilities available while removing noisy HA-facing entities such as Head X/Y/Z, raw IMU acceleration/gyro axes, Speech Detected, and Services Suspended.
 
 ### Removed
-- Remove the old fork identity from package metadata, app entry point, README tags, and user-facing documentation.
+- Remove legacy project identity from package metadata, app entry point, README tags, and user-facing documentation.
 - Remove robot-side video/camera features from the app scope; external RTSP remains handled by the separate Mac bridge.

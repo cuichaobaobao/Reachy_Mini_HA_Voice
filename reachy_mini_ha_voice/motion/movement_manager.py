@@ -5,7 +5,7 @@ This module provides a centralized control system for robot movements,
 inspired by the reachy_mini_conversation_app architecture.
 
 Key features:
-- Configurable control loop frequency (default 50Hz)
+- Configurable control loop frequency (default 60Hz)
 - Command queue pattern (thread-safe external API)
 - Error throttling (prevents log explosion)
 - JSON-driven animation system (conversation state animations)

@@ -18,7 +18,7 @@ try:
     __version__ = version("reachy-mini-ha-voice")
 except Exception:
     __version__ = "0.0.0"  # Fallback for development
-__author__ = "lichao622"
+__author__ = "Reachy Mini HA Voice Contributors"
 
 # Don't import main module here to avoid runpy warning
 # The app is loaded via entry point: reachy_mini_ha_voice.main:ReachyMiniHaVoice

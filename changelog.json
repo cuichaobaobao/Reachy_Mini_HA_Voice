@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.1.2",
+    "date": "2026-06-25",
+    "changes": [
+      "Remove personal namespace from ESPHome device metadata and user-facing docs",
+      "Simplify README and Home Assistant setup notes",
+      "Keep Linux Voice wake-word assets and official-style 60Hz motion alignment unchanged"
+    ]
+  },
+  {
     "version": "1.1.1",
     "date": "2026-06-24",
     "changes": [
@@ -12,11 +21,11 @@
     "date": "2026-06-24",
     "changes": [
       "Start the project as reachy-mini-ha-voice with Python package reachy_mini_ha_voice",
-      "Rebrand Home Assistant device metadata to Reachy Mini HA Voice by lichao622",
+      "Use neutral Home Assistant device metadata for Reachy Mini HA Voice",
       "Keep tuned Reachy motion: 60Hz official-style control, breathing, antenna motion, generated idle micro-actions, listening/thinking/speaking states, emotion moves, DOA wake turns, manual head yaw hold, and body-yaw follow",
       "Keep OHF/Linux Voice inspired MicroWakeWord setup with Okay Nabu, Hey Mycroft, Hey Jarvis, and Stop",
       "Trim Home Assistant entities to useful controls and diagnostics",
-      "Remove old fork identity and keep robot-side video/camera features outside this app"
+      "Remove legacy project identity and keep robot-side video/camera features outside this app"
     ]
   }
 ]
